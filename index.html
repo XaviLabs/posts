@@ -226,11 +226,10 @@
                     data.table.rows.forEach((row, index) => {
                         if (row.c && row.c[0]) { // Si hay datos
                             posts.push({
-                                numero: row.c[0].v || (index + 1),
-                                categoria: row.c[1].v || 'General',
-                                subcategoria: row.c[2].v || '',
-                                contenido: row.c[3].v || '',
-                                fuente: row.c[4].v || 'Original'
+                            categoria: row.c[4]?.v || 'General', // Lee la columna E (si es categoria)
+                            subcategoria: row.c[1]?.v || '',      // Lee la columna B
+                            contenido: row.c[2]?.v || '',         // Lee la columna C (el post)
+                            fuente: row.c[3]?.v || 'Original'     // Lee la columna D
                             });
                         }
                     });
