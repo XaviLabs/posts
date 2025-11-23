@@ -210,7 +210,8 @@
         // Función para cargar datos de Google Sheets
         async function loadPosts() {
             try {
-                const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/query?tqx=out:json`;
+                // La URL DEBE incluir el nombre de la hoja (Hoja 1 o el nombre real de tu pestaña)
+                const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/query?sheet=Hoja 1&tqx=out:json`;
                 
                 const response = await fetch(url);
                 const text = await response.text();
