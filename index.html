@@ -145,6 +145,13 @@
             content: " ✓";
         }
 
+        .loading {
+            text-align: center;
+            color: white;
+            padding: 40px 20px;
+            font-size: 16px;
+        }
+
         .empty-state {
             text-align: center;
             color: white;
@@ -187,7 +194,7 @@
         </header>
 
         <div class="posts-container" id="postsContainer">
-            <!-- Los posts se cargan aquí -->
+            <div class="loading">Cargando posts...</div>
         </div>
 
         <div class="footer">
@@ -196,54 +203,47 @@
     </div>
 
     <script>
-        // Función para obtener parámetros de URL
-        function getUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            return params;
-        }
+        // URL del Google Sheet publicado
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQyjXC7mPDXWgsjmT77tTE7_He5f5zvsAXTr9hWT0j4Wl-mUZxq92-avW64g40WbnUmCVllMr_pnJU-/pubhtml';
+        const SHEET_ID = '2PACX-1vQyjXC7mPDXWgsjmT77tTE7_He5f5zvsAXTr9hWT0j4Wl-mUZxq92-avW64g40WbnUmCVllMr_pnJU-';
 
-        // Función para decodificar JSON desde URL
-        function loadPosts() {
-            const params = getUrlParams();
-            const postsData = params.get('data');
-
-            if (!postsData) {
-                loadDemoData();
-                return;
-            }
-
+        // Función para cargar datos de Google Sheets
+        async function loadPosts() {
             try {
-                const posts = JSON.parse(decodeURIComponent(postsData));
-                renderPosts(posts);
-            } catch (error) {
-                console.error('Error al parsear posts:', error);
-                loadDemoData();
-            }
-        }
-
-        // Datos de demostración
-        function loadDemoData() {
-            const demoPosts = [
-                {
-                    numero: 1,
-                    categoria: "newsjacking - IA",
-                    contenido: "Más del 50% de las startups en España ya usan IA. No es moda, es una carrera hacia la automatización que acelera proyectos individuales. Ojo ahí, si no integras IA, te quedas atrás.",
-                    fuente: "Perplexity: El Español"
-                },
-                {
-                    numero: 2,
-                    categoria: "newsjacking - automatización",
-                    contenido: "Microsoft lanza Copilot Studio para que cualquier pyme cree agentes IA que automatizan tareas aburridas. Si tu negocio no lo usa ya, alguien te va a ganar por ser más ágil.",
-                    fuente: "Perplexity: Jahaziel Ponce"
-                },
-                {
-                    numero: 3,
-                    categoria: "insight_practico - sistemas",
-                    contenido: "No necesitas un CRM complejo. Necesitas: 1 tabla en Airtable, 2 formulas, 1 automation en n8n. Eso es suficiente para 95% de negocios. Stop over-engineering.",
-                    fuente: "Original"
+                const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/query?tqx=out:json`;
+                
+                const response = await fetch(url);
+                const text = await response.text();
+                
+                // Parsear respuesta de Google Visualization API
+                const jsonString = text.substring(47).slice(0, -2);
+                const data = JSON.parse(jsonString);
+                
+                // Convertir datos a array de posts
+                const posts = [];
+                if (data.table && data.table.rows) {
+                    data.table.rows.forEach((row, index) => {
+                        if (row.c && row.c[0]) { // Si hay datos
+                            posts.push({
+                                numero: row.c[0].v || (index + 1),
+                                categoria: row.c[1].v || 'General',
+                                subcategoria: row.c[2].v || '',
+                                contenido: row.c[3].v || '',
+                                fuente: row.c[4].v || 'Original'
+                            });
+                        }
+                    });
                 }
-            ];
-            renderPosts(demoPosts);
+                
+                if (posts.length > 0) {
+                    renderPosts(posts);
+                } else {
+                    showEmpty();
+                }
+            } catch (error) {
+                console.error('Error cargando posts:', error);
+                showEmpty();
+            }
         }
 
         // Renderizar posts
@@ -251,22 +251,17 @@
             const container = document.getElementById('postsContainer');
             container.innerHTML = '';
 
-            if (!posts || posts.length === 0) {
-                container.innerHTML = '<div class="empty-state"><p>No hay posts para mostrar</p></div>';
-                return;
-            }
-
-            posts.forEach((post, index) => {
+            posts.forEach((post) => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     <div class="card-header">
-                        <span class="card-numero">POST ${post.numero || index + 1}</span>
-                        <span class="card-categoria">${post.categoria || 'General'}</span>
+                        <span class="card-numero">POST ${post.numero}</span>
+                        <span class="card-categoria">${post.categoria} - ${post.subcategoria}</span>
                     </div>
                     <p class="card-contenido">${post.contenido}</p>
                     <div class="card-footer">
-                        <span class="card-fuente">${post.fuente || 'Original'}</span>
+                        <span class="card-fuente">${post.fuente}</span>
                         <button class="btn-copiar" onclick="copiarAlPortapapeles('${escaparComillas(post.contenido)}', this)">
                             📋 Copiar
                         </button>
@@ -276,14 +271,18 @@
             });
         }
 
+        // Mostrar vacío
+        function showEmpty() {
+            const container = document.getElementById('postsContainer');
+            container.innerHTML = '<div class="empty-state"><p>No hay posts disponibles</p></div>';
+        }
+
         // Función para copiar
         function copiarAlPortapapeles(texto, button) {
             navigator.clipboard.writeText(texto).then(() => {
-                // Cambiar texto del botón
                 button.textContent = '✓ Copiado';
                 button.classList.add('copied');
 
-                // Volver al estado original después de 2 segundos
                 setTimeout(() => {
                     button.textContent = '📋 Copiar';
                     button.classList.remove('copied');
@@ -294,13 +293,16 @@
             });
         }
 
-        // Escapar comillas en strings
+        // Escapar comillas
         function escaparComillas(texto) {
-            return texto.replace(/'/g, "\\'");
+            return texto.replace(/'/g, "\\'").replace(/"/g, '\\"');
         }
 
-        // Cargar posts cuando se carga la página
+        // Cargar posts al abrir la página
         document.addEventListener('DOMContentLoaded', loadPosts);
+        
+        // Recargar cada 10 segundos para obtener datos frescos
+        setInterval(loadPosts, 10000);
     </script>
 </body>
 </html>
